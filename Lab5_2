@@ -1,0 +1,62 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import multiprocessing as mp
+import random
+import time
+
+
+NUM_SAMPLES = 5000
+HIST_SIZE = 25
+
+
+def sample_process(hist, conn):
+    for _ in range(NUM_SAMPLES):
+        counter = 0
+        for _ in range(12):
+            random_num = random.randint(0, 100)
+            if random_num >= 49:
+                counter += 1
+            else:
+                counter -= 1
+        index = counter + 12
+        hist[index] += 1
+    conn.send(hist)   
+    conn.close()
+
+
+def save_histogram(hist):
+    df = pd.DataFrame({
+        "Counter": range(-12, 13),
+        "Frequency": hist
+    })
+    df.to_csv("histogram_data.csv", index=False)
+    print("Histogram saved to 'histogram_data.csv'")
+
+
+if __name__ == "__main__":
+
+    parent_conn, child_conn = mp.Pipe()
+    hist = [0] * HIST_SIZE
+
+  
+    p = mp.Process(target=sample_process, args=(hist, child_conn))
+    start_time = time.time()
+    p.start() 
+    p.join()  
+
+   
+    hist = parent_conn.recv()
+    end_time = time.time() 
+    print(f"Execution time: {end_time - start_time:.2f} seconds")
+
+  
+    save_histogram(hist)
+
+   
+    data = pd.read_csv("histogram_data.csv")
+    plt.bar(data['Counter'], data['Frequency'], color='skyblue')
+    plt.xlabel('Counter')
+    plt.ylabel('Frequency')
+    plt.title('Histogram of Sampled Normal Distribution')
+    plt.savefig("histogram_plot.png")  
+    plt.show()
