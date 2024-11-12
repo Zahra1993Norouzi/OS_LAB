@@ -1,62 +1,109 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-import multiprocessing as mp
-import random
-import time
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <time.h>
 
+#define NUM_SAMPLES 5000
+#define HIST_SIZE 25
+#define NUM_PROCESSES 10
 
-NUM_SAMPLES = 5000
-HIST_SIZE = 25
+void sample_process(int hist[], int num_samples) {
+    for (int i = 0; i < num_samples; i++) {
+        int counter = 0;
+        for (int j = 0; j < 12; j++) {
+            int random_num = rand() % 101;
+            if (random_num >= 49) {
+                counter++;
+            } else {
+                counter--;
+            }
+        }
+        int index = counter + 12;
+        hist[index]++;
+    }
+}
 
+void save_histogram(int hist[]) {
+    FILE *file = fopen("histogram_data.csv", "w");
+    if (file == NULL) {
+        perror("Unable to open file");
+        exit(1);
+    }
+    for (int i = -12; i <= 12; i++) {
+        fprintf(file, "%d %d\n", i, hist[i + 12]);
+    }
+    fclose(file);
+    printf("Histogram data saved to 'histogram_data.csv'\n");
+}
 
-def sample_process(hist, conn):
-    for _ in range(NUM_SAMPLES):
-        counter = 0
-        for _ in range(12):
-            random_num = random.randint(0, 100)
-            if random_num >= 49:
-                counter += 1
-            else:
-                counter -= 1
-        index = counter + 12
-        hist[index] += 1
-    conn.send(hist)   
-    conn.close()
+void plot_histogram() {
+    FILE *gnuplot = popen("gnuplot -persistent", "w");
+    if (gnuplot == NULL) {
+        perror("Error opening gnuplot");
+        exit(1);
+    }
+    fprintf(gnuplot, "set terminal png size 800,600\n");
+    fprintf(gnuplot, "set output 'histogram_plot.png'\n");
+    fprintf(gnuplot, "set title 'Histogram of Sampled Normal Distribution'\n");
+    fprintf(gnuplot, "set xlabel 'Counter'\n");
+    fprintf(gnuplot, "set ylabel 'Frequency'\n");
+    fprintf(gnuplot, "set style fill solid\n");
+    fprintf(gnuplot, "plot 'histogram_data.csv' using 1:2 with boxes lc rgb 'skyblue' notitle\n");
+    fclose(gnuplot);
+    printf("Histogram plot saved as 'histogram_plot.png'\n");
+}
 
+int main() {
+    int hist[HIST_SIZE] = {0}; 
+    int fd[NUM_PROCESSES][2];
+    int samples_per_process = NUM_SAMPLES / NUM_PROCESSES;
+    pid_t pid;
 
-def save_histogram(hist):
-    df = pd.DataFrame({
-        "Counter": range(-12, 13),
-        "Frequency": hist
-    })
-    df.to_csv("histogram_data.csv", index=False)
-    print("Histogram saved to 'histogram_data.csv'")
+    srand(time(NULL));
 
+    clock_t start = clock();
 
-if __name__ == "__main__":
+    for (int i = 0; i < NUM_PROCESSES; i++) {
+        if (pipe(fd[i]) == -1) {
+            perror("Pipe failed");
+            return 1;
+        }
 
-    parent_conn, child_conn = mp.Pipe()
-    hist = [0] * HIST_SIZE
+        pid = fork();
+        if (pid < 0) {
+            perror("Fork failed");
+            return 1;
+        }
 
-  
-    p = mp.Process(target=sample_process, args=(hist, child_conn))
-    start_time = time.time()
-    p.start() 
-    p.join()  
+        if (pid == 0) {
+            close(fd[i][0]);
+            int local_hist[HIST_SIZE] = {0};
+            sample_process(local_hist, samples_per_process);
+            write(fd[i][1], local_hist, sizeof(local_hist));
+            close(fd[i][1]);
+            exit(0);
+        }
+    }
 
-   
-    hist = parent_conn.recv()
-    end_time = time.time() 
-    print(f"Execution time: {end_time - start_time:.2f} seconds")
+    for (int i = 0; i < NUM_PROCESSES; i++) {
+        close(fd[i][1]);
+        int local_hist[HIST_SIZE] = {0};
+        read(fd[i][0], local_hist, sizeof(local_hist));
+        close(fd[i][0]);
 
-  
-    save_histogram(hist)
+        for (int j = 0; j < HIST_SIZE; j++) {
+            hist[j] += local_hist[j];
+        }
+    }
 
-   
-    data = pd.read_csv("histogram_data.csv")
-    plt.bar(data['Counter'], data['Frequency'], color='skyblue')
-    plt.xlabel('Counter')
-    plt.ylabel('Frequency')
-    plt.title('Histogram of Sampled Normal Distribution')
-    plt.savefig("histogram_plot.png")  
-    plt.show()
+    clock_t end = clock();
+    double execution_time = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("Total execution time: %.2f seconds\n", execution_time);
+
+    save_histogram(hist);
+    plot_histogram();
+
+    return 0;
+}
+
