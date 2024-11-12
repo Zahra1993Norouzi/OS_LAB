@@ -2,16 +2,15 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
-#include <sys/wait.h>
 
 #define NUM_SAMPLES 5000
 #define HIST_SIZE 25
 
-void sample_process(int hist[]) {
-    for (int i = 0; i < NUM_SAMPLES; i++) {
+void sample_process(int hist[], int num_samples) {
+    for (int i = 0; i < num_samples; i++) {
         int counter = 0;
         for (int j = 0; j < 12; j++) {
-            int random_num = rand() % 101; 
+            int random_num = rand() % 101;
             if (random_num >= 49) {
                 counter++;
             } else {
@@ -36,7 +35,6 @@ void save_histogram(int hist[]) {
     printf("Histogram data saved to 'histogram_data.csv'\n");
 }
 
-  gnuplot
 void plot_histogram() {
     FILE *gnuplot = popen("gnuplot -persistent", "w");
     if (gnuplot == NULL) {
@@ -48,23 +46,26 @@ void plot_histogram() {
     fprintf(gnuplot, "set title 'Histogram of Sampled Normal Distribution'\n");
     fprintf(gnuplot, "set xlabel 'Counter'\n");
     fprintf(gnuplot, "set ylabel 'Frequency'\n");
-    fprintf(gnuplot, "set style fill solid\n");  // پر کردن میله‌های نمودار
+    fprintf(gnuplot, "set style fill solid\n");
     fprintf(gnuplot, "plot 'histogram_data.csv' using 1:2 with boxes lc rgb 'skyblue' notitle\n");
     fclose(gnuplot);
     printf("Histogram plot saved as 'histogram_plot.png'\n");
 }
 
 int main() {
+    int hist[HIST_SIZE] = {0}; 
     srand(time(NULL)); 
 
-    int hist[HIST_SIZE] = {0}; 
+    clock_t start = clock(); 
 
-    sample_process(hist); 
+    sample_process(hist, NUM_SAMPLES);
 
-    save_histogram(hist); 
+    clock_t end = clock(); 
+    double execution_time = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("Execution time: %.2f seconds\n", execution_time);
 
-    plot_histogram(); 
+    save_histogram(hist);
+    plot_histogram();
 
     return 0;
 }
-
