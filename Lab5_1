@@ -1,38 +1,70 @@
-import random
-import time
-import matplotlib.pyplot as plt
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
+#define NUM_SAMPLES 5000
+#define HIST_SIZE 25
 
-num_samples = 5000
+void sample_process(int hist[]) {
+    for (int i = 0; i < NUM_SAMPLES; i++) {
+        int counter = 0;
+        for (int j = 0; j < 12; j++) {
+            int random_num = rand() % 101; 
+            if (random_num >= 49) {
+                counter++;
+            } else {
+                counter--;
+            }
+        }
+        int index = counter + 12;
+        hist[index]++;
+    }
+}
 
-def sample_process(num_samples):
-    hist = [0] * 25
-    for _ in range(num_samples):
-        counter = 0
-        for _ in range(12):
-            random_num = random.randint(0, 100)
-            if random_num >= 49:
-                counter += 1
-            else:
-                counter -= 1
-        index = counter + 12
-        hist[index] += 1
-    return hist
+void save_histogram(int hist[]) {
+    FILE *file = fopen("histogram_data.csv", "w");
+    if (file == NULL) {
+        perror("Unable to open file");
+        exit(1);
+    }
+    for (int i = -12; i <= 12; i++) {
+        fprintf(file, "%d %d\n", i, hist[i + 12]);
+    }
+    fclose(file);
+    printf("Histogram data saved to 'histogram_data.csv'\n");
+}
 
-if __name__ == '__main__':
-    start_time = time.time()
-    
-    final_hist = sample_process(num_samples)
-    
-    end_time = time.time()
-    execution_time = end_time - start_time
-    print("Execution Time (Serial):", execution_time, "seconds")
-    
-    x_values = list(range(-12, 13))
-    plt.bar(x_values, final_hist, color='blue', alpha=0.7)
-    plt.xlabel("Counter Value")
-    plt.ylabel("Frequency")
-    plt.title("Histogram of Sampled Normal Distribution (Serial)")
-    
-    plt.savefig("normal_distribution_histogram.png")
-    print("Histogram saved as 'normal_distribution_histogram.png'")
+  gnuplot
+void plot_histogram() {
+    FILE *gnuplot = popen("gnuplot -persistent", "w");
+    if (gnuplot == NULL) {
+        perror("Error opening gnuplot");
+        exit(1);
+    }
+    fprintf(gnuplot, "set terminal png size 800,600\n");
+    fprintf(gnuplot, "set output 'histogram_plot.png'\n");
+    fprintf(gnuplot, "set title 'Histogram of Sampled Normal Distribution'\n");
+    fprintf(gnuplot, "set xlabel 'Counter'\n");
+    fprintf(gnuplot, "set ylabel 'Frequency'\n");
+    fprintf(gnuplot, "set style fill solid\n");  // پر کردن میله‌های نمودار
+    fprintf(gnuplot, "plot 'histogram_data.csv' using 1:2 with boxes lc rgb 'skyblue' notitle\n");
+    fclose(gnuplot);
+    printf("Histogram plot saved as 'histogram_plot.png'\n");
+}
+
+int main() {
+    srand(time(NULL)); 
+
+    int hist[HIST_SIZE] = {0}; 
+
+    sample_process(hist); 
+
+    save_histogram(hist); 
+
+    plot_histogram(); 
+
+    return 0;
+}
+
