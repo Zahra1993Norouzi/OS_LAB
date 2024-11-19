@@ -1,0 +1,42 @@
+#include <stdio.h>
+#include <omp.h> 
+
+void calculate_prefix_sum(int a[], int n, int b[], int start) {
+    b[start] = a[start];
+    for (int i = start + 1; i < n; i++) {
+        b[i] = b[i - 1] + a[i];
+    }
+}
+
+int main() {
+    int a[] = {1, 2, 1, 5, 0, 7, 3, 4, 2, 7}; 
+    int n = sizeof(a) / sizeof(a[0]); 
+    int b[n]; // آرایه برای ذخیره prefix sum
+
+    int k = n / 2; 
+
+    calculate_prefix_sum(a, k, b, 0);
+
+    calculate_prefix_sum(a, n, b, k);
+
+    int sum_first = b[k - 1];
+
+    #pragma omp parallel for
+    for (int i = k; i < n; i++) {
+        b[i] += sum_first;
+    }
+
+    printf("Original array: ");
+    for (int i = 0; i < n; i++) {
+        printf("%d ", a[i]);
+    }
+    printf("\n");
+
+    printf("Prefix sum array: ");
+    for (int i = 0; i < n; i++) {
+        printf("%d ", b[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
