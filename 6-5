@@ -1,0 +1,85 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <pthread.h>
+
+#define N 500
+
+typedef struct {
+    int *a;
+    int *b;
+    int start;
+    int end;
+} ThreadData;
+
+void calculate_prefix_sum_serial(int a[], int n, int b[]) {
+    b[0] = a[0];
+    for (int i = 1; i < n; i++) {
+        b[i] = b[i - 1] + a[i];
+    }
+}
+
+void* calculate_prefix_sum_parallel(void* arg) {
+    ThreadData* data = (ThreadData*)arg;
+    int *a = data->a;
+    int *b = data->b;
+    int start = data->start;
+    int end = data->end;
+
+    if (start == 0) {
+        b[start] = a[start];
+    } else {
+        b[start] = b[start - 1] + a[start];
+    }
+    
+    for (int i = start + 1; i < end; i++) {
+        b[i] = b[i - 1] + a[i];
+    }
+
+    pthread_exit(NULL);
+}
+
+int main() {
+    int *a = (int *)malloc(N * sizeof(int));
+    int *b = (int *)malloc(N * sizeof(int));
+    pthread_t threads[2]; 
+    ThreadData threadData[2]; 
+
+    srand(time(NULL)); 
+    for (int i = 0; i < N; i++) {
+        a[i] = rand() % 1000; 
+    }
+
+    int mid = N / 2;
+
+    threadData[0].a = a;
+    threadData[0].b = b;
+    threadData[0].start = 0;
+    threadData[0].end = mid;
+    pthread_create(&threads[0], NULL, calculate_prefix_sum_parallel, &threadData[0]);
+
+    threadData[1].a = a;
+    threadData[1].b = b;
+    threadData[1].start = mid;
+    threadData[1].end = N;
+    pthread_create(&threads[1], NULL, calculate_prefix_sum_parallel, &threadData[1]);
+
+    pthread_join(threads[0], NULL);
+    pthread_join(threads[1], NULL);
+
+    for (int i = mid; i < N; i++) {
+        b[i] += b[mid - 1];
+    }
+
+    clock_t start = clock();
+    pthread_join(threads[0], NULL);
+    clock_t end = clock();
+    double time_parallel = (double)(end - start) / CLOCKS_PER_SEC;
+
+    printf("Parallel time: %.6f seconds\n", time_parallel);
+
+    free(a);
+    free(b);
+
+    return 0;
+}
