@@ -1,28 +1,28 @@
 #include <stdio.h>
 
-void compute_prefix_sum(int *input_array, int *output_array, int n) {
-    output_array[0] = input_array[0]; 
+void calculate_prefix_sum(int a[], int n, int b[]) {
+    b[0] = a[0]; 
     for (int i = 1; i < n; i++) {
-        output_array[i] = output_array[i - 1] + input_array[i]; 
+        b[i] = b[i - 1] + a[i]; 
     }
 }
 
 int main() {
-    int input_array[] = {1, 2, 3, 4, 5, 6};
-    int n = sizeof(input_array) / sizeof(input_array[0]); 
-    int output_array[n]; 
+    int a[] = {1, 2, 1, 5, 0, 7, 3, 4, 2, 7}; 
+    int n = sizeof(a) / sizeof(a[0]); 
+    int b[n]; 
 
-    compute_prefix_sum(input_array, output_array, n);
+    calculate_prefix_sum(a, n, b);
 
-    printf("Input Array: ");
+    printf("Original array: ");
     for (int i = 0; i < n; i++) {
-        printf("%d ", input_array[i]);
+        printf("%d ", a[i]);
     }
     printf("\n");
 
-    printf("Prefix Sum: ");
+    printf("Prefix sum array: ");
     for (int i = 0; i < n; i++) {
-        printf("%d ", output_array[i]);
+        printf("%d ", b[i]);
     }
     printf("\n");
 
