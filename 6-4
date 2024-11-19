@@ -1,32 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <omp.h> 
 
 void calculate_prefix_sum_serial(int a[], int n, int b[]) {
     b[0] = a[0];
     for (int i = 1; i < n; i++) {
         b[i] = b[i - 1] + a[i];
-    }
-}
-
-void calculate_prefix_sum_parallel(int a[], int n, int b[]) {
-    int k = n / 2; 
-
-    b[0] = a[0];
-    for (int i = 1; i < k; i++) {
-        b[i] = b[i - 1] + a[i];
-    }
-
-    b[k] = a[k];
-    for (int i = k + 1; i < n; i++) {
-        b[i] = b[i - 1] + a[i];
-    }
-
-    int sum_first = b[k - 1];
-    #pragma omp parallel for
-    for (int i = k; i < n; i++) {
-        b[i] += sum_first;
     }
 }
 
@@ -45,14 +24,7 @@ int main() {
     clock_t end = clock();
     double time_serial = (double)(end - start) / CLOCKS_PER_SEC;
 
-    start = clock();
-    calculate_prefix_sum_parallel(a, n, b);
-    end = clock();
-    double time_parallel = (double)(end - start) / CLOCKS_PER_SEC;
-
-    printf("Array size: %d\n", n);
     printf("Serial time: %.6f seconds\n", time_serial);
-    printf("Parallel time: %.6f seconds\n\n", time_parallel);
 
     free(a);
     free(b);
