@@ -1,5 +1,5 @@
 #include <stdio.h>
-
+salam salm
 void calculate_prefix_sum(int a[], int n, int b[]) {
     b[0] = a[0]; 
     for (int i = 1; i < n; i++) {
